@@ -46,8 +46,8 @@ class VisioFile:
         self.pages = self.load_pages()
 
         # todo: is this needed? remove
-        #for filename, page in self.pages.items():
-        #    p = VisioFile.Page(page, filename, 'no name', self)
+        # for filename, page in self.pages.items():
+        #     p = VisioFile.Page(page, filename, 'no name', self)
 
         return self.pages
 
@@ -56,17 +56,17 @@ class VisioFile:
         page_dir = '{}/visio/pages/'.format(self.directory)
 
         rels = file_to_xml(rel_dir + 'pages.xml.rels').getroot()
-        #print(VisioFile.pretty_print_element(rels))  # rels contains map from filename to Id
+        # print(VisioFile.pretty_print_element(rels))  # rels contains map from filename to Id
         relid_page_dict = {}
-        #relid_page_name = {}
+        # relid_page_name = {}
         for rel in rels:
-            rel_id=rel.attrib['Id']
+            rel_id = rel.attrib['Id']
             page_file = rel.attrib['Target']
             relid_page_dict[rel_id] = page_file
-            #relid_page_name[rel_id] = page_name
+            # relid_page_name[rel_id] = page_name
 
         pages = file_to_xml(page_dir + 'pages.xml').getroot()  # this contains a list of pages with rel_id and filename
-        #print(VisioFile.pretty_print_element(pages))  # pages contains Page name, width, height, mapped to Id
+        # print(VisioFile.pretty_print_element(pages))  # pages contains Page name, width, height, mapped to Id
         page_dict = {}  # dict with filename as index
 
         for page in pages:  # type: Element
@@ -197,7 +197,7 @@ class VisioFile:
         shapes.append(shape)
         return shapes
 
-    def increment_shape_ids(self, shape: Element, page_path: str, id_map: dict=None):
+    def increment_shape_ids(self, shape: Element, page_path: str, id_map: dict = None):
         if id_map is None:
             id_map = dict()
         self.set_new_id(shape, page_path, id_map)
@@ -234,7 +234,7 @@ class VisioFile:
                                 # update sheet refs with new ids
                                 id = f.split('!')[0].split('.')[1]
                                 new_id = id_map[id]
-                                new_f = f.replace(f'Sheet.{id}',f'Sheet.{new_id}')
+                                new_f = f.replace(f'Sheet.{id}', f'Sheet.{new_id}')
                                 c.attrib['F'] = new_f
         return shape
 
@@ -247,8 +247,8 @@ class VisioFile:
 
     def save_vsdx(self, new_filename=None):
         # write the pages to file
-        #for key in self.pages.keys():
-        #    xml_to_file(self.pages[key], key)
+        # for key in self.pages.keys():
+        #     xml_to_file(self.pages[key], key)
 
         for page in self.page_objects:  # type: VisioFile.Page
             xml_to_file(page.xml, page.filename)
@@ -380,7 +380,7 @@ class VisioFile:
                         text = t.text
                     if not text:
                         text = self.get_all_text_from_xml(t)
-            return text.replace('\n','') if text else ""
+            return text.replace('\n', '') if text else ""
 
         @text.setter
         def text(self, value):
