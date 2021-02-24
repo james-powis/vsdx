@@ -21,8 +21,8 @@ def to_float(val: str):
 
 class VisioFile:
     def __init__(self, filename):
-        self.filename = filename
-        self.directory = f"./{filename.rsplit('.', 1)[0]}"
+        self.filename = os.path.realpath(filename)
+        self.directory = os.path.splitext(self.filename)[0]
         self.pages = dict()   # populated by open_vsdx_file()
         self.page_objects = list()  # list of Page objects
         self.page_max_ids = dict()  # maximum shape id, used to add new shapes with a unique Id

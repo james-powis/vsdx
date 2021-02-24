@@ -3,10 +3,12 @@ from vsdx import VisioFile
 from datetime import datetime
 import os
 
+our_dir = os.path.dirname(os.path.realpath(__file__))
 
 def test_file_closure():
-    filename = 'test1.vsdx'
-    directory = f"./{filename.rsplit('.', 1)[0]}"
+    print(our_dir)
+    filename = os.path.join(our_dir, 'test1.vsdx')
+    directory = os.path.splitext(filename)[0]
     with VisioFile(filename) as vis:
         # confirm directory exists
         assert os.path.exists(directory)
@@ -16,7 +18,7 @@ def test_file_closure():
 
 @pytest.mark.parametrize("filename, page_name", [("test1.vsdx","Page-1"), ("test2.vsdx", "Page-1")])
 def test_get_page(filename: str, page_name: str):
-    with VisioFile(filename) as vis:
+    with VisioFile(os.path.join(our_dir, filename)) as vis:
         page = vis.get_page(0)  # type: VisioFile.Page
         # confirm page name as expected
         assert page.name == page_name
@@ -24,7 +26,7 @@ def test_get_page(filename: str, page_name: str):
 
 @pytest.mark.parametrize("filename, count", [("test1.vsdx", 1), ("test2.vsdx", 1)])
 def test_get_page_shapes(filename: str, count: int):
-    with VisioFile(filename) as vis:
+    with VisioFile(os.path.join(our_dir, filename)) as vis:
         page = vis.get_page(0)  # type: VisioFile.Page
         print(f"shape count={len(page.shapes)}")
         assert len(page.shapes) == count
@@ -32,7 +34,7 @@ def test_get_page_shapes(filename: str, count: int):
 
 @pytest.mark.parametrize("filename, count", [("test1.vsdx", 4), ("test2.vsdx", 6)])
 def test_get_page_sub_shapes(filename: str, count: int):
-    with VisioFile(filename) as vis:
+    with VisioFile(os.path.join(our_dir, filename)) as vis:
         page = vis.get_page(0)  # type: VisioFile.Page
         shapes = page.shapes[0].sub_shapes()
         print(f"shape count={len(shapes)}")
@@ -44,7 +46,7 @@ def test_get_page_sub_shapes(filename: str, count: int):
                           ("test2.vsdx","2.33,8.72 1.33,10.66 4.13,10.66 5.91,8.72 1.61,8.58 3.25,8.65 ")])
 def test_shape_locations(filename: str, expected_locations: str):
     print("=== list_shape_locations ===")
-    with VisioFile(filename) as vis:
+    with VisioFile(os.path.join(our_dir, filename)) as vis:
         page = vis.get_page(0)  # type: VisioFile.Page
         shapes = page.shapes[0].sub_shapes()
         locations = ""
@@ -57,7 +59,7 @@ def test_shape_locations(filename: str, expected_locations: str):
 
 @pytest.mark.parametrize("filename, shape_id", [("test1.vsdx", "6"), ("test2.vsdx", "6")])
 def test_get_shape_with_text(filename: str, shape_id: str):
-    with VisioFile(filename) as vis:
+    with VisioFile(os.path.join(our_dir, filename)) as vis:
         page = vis.get_page(0)  # type: VisioFile.Page
         shape = page.shapes[0].find_shape_by_text('{{date}}')  # type: VisioFile.Shape
         assert shape.ID == shape_id
@@ -69,7 +71,7 @@ def test_apply_context(filename: str):
     context = {'scenario': 'test',
                'date': date_str}
     out_file = 'out'+ os.sep + filename[:-5] + '_VISfilter_applied.vsdx'
-    with VisioFile(filename) as vis:
+    with VisioFile(os.path.join(our_dir, filename)) as vis:
         page = vis.get_page(0)  # type: VisioFile.Page
         original_shape = page.shapes[0].find_shape_by_text('{{date}}')  # type: VisioFile.Shape
         assert original_shape.ID
@@ -88,7 +90,7 @@ def test_find_replace(filename: str):
     old = 'Shape'
     new = 'Figure'
     out_file = 'out'+ os.sep + filename[:-5] + '_VISfind_replace_applied.vsdx'
-    with VisioFile(filename) as vis:
+    with VisioFile(os.path.join(our_dir, filename)) as vis:
         page = vis.get_page(0)  # type: VisioFile.Page
         original_shapes = page.find_shapes_by_text(old)  # type: VisioFile.Shape
         shape_ids = [s.ID for s in original_shapes]
@@ -107,7 +109,7 @@ def test_find_replace(filename: str):
 @pytest.mark.parametrize("filename", ["test2.vsdx", "test3_house.vsdx"])
 def test_remove_shape(filename: str):
     out_file = 'out' + os.sep + filename[:-5] + '_shape_removed.vsdx'
-    with VisioFile(filename) as vis:
+    with VisioFile(os.path.join(our_dir, filename)) as vis:
         shapes = vis.page_objects[0].shapes
         # get shape to remove
         s = shapes[0].find_shape_by_text('Shape to remove')  # type: VisioFile.Shape
@@ -126,7 +128,7 @@ def test_remove_shape(filename: str):
                          [("test1.vsdx", {"Shape to remove"}, {(1.0,1.0)})])
 def test_set_shape_location(filename: str, shape_names: set, shape_locations: set):
     out_file = 'out'+ os.sep + filename[:-5] + '_test_set_shape_location.vsdx'
-    with VisioFile(filename) as vis:
+    with VisioFile(os.path.join(our_dir, filename)) as vis:
         shapes = vis.page_objects[0].shapes
         # move shapes in list
         for (shape_name, x_y) in zip(shape_names, shape_locations):
@@ -156,7 +158,7 @@ def test_move_shape(filename: str, shape_names: set, shape_x_y_deltas: set):
     out_file = 'out'+ os.sep + filename[:-5] + '_test_move_shape.vsdx'
     expected_shape_locations = dict()
 
-    with VisioFile(filename) as vis:
+    with VisioFile(os.path.join(our_dir, filename)) as vis:
         shapes = vis.page_objects[0].shapes
         # move shapes in list
         for (shape_name, x_y) in zip(shape_names, shape_x_y_deltas):
@@ -179,3 +181,12 @@ def test_move_shape(filename: str, shape_names: set, shape_x_y_deltas: set):
             assert s  # check shape found
             assert s.x == expected_shape_locations[shape_name][0]
             assert s.y == expected_shape_locations[shape_name][1]
+
+
+@pytest.mark.parametrize(("filename"),
+                         [('test4_lines.vsdx')]) 
+def test_line_connections(filename: str):
+    with VisioFile(os.path.join(our_dir, filename)) as vis:
+        shapes = vis.page_objects[0].shapes
+        print(shapes)
+        assert False
