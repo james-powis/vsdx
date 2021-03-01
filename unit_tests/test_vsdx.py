@@ -3,6 +3,8 @@ from vsdx import VisioFile
 from datetime import datetime
 import os
 
+import xml.etree.ElementTree as ET
+
 our_dir = os.path.dirname(os.path.realpath(__file__))
 
 
@@ -186,8 +188,10 @@ def test_move_shape(filename: str, shape_names: set, shape_x_y_deltas: set):
 
 @pytest.mark.parametrize(("filename"),
                          [('test4_lines.vsdx')])
-def test_line_connections(filename: str):
+def test_master_inheritance(filename: str):
     with VisioFile(os.path.join(our_dir, filename)) as vis:
-        shapes = vis.page_objects[0].shapes
-        print(shapes)
-        assert False
+        page = vis.get_page(0)  # type: VisioFile.Page
+        shape_a = page.find_shapes_by_text('Shape A')  # type: VisioFile.Shape
+        shape_b = page.find_shapes_by_text('Shape B')  # type: VisioFile.Shape
+        assert shape_a
+        assert shape_b

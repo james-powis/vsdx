@@ -23,6 +23,7 @@ class VisioFile:
     def __init__(self, filename):
         self.filename = os.path.realpath(filename)
         self.directory = os.path.splitext(self.filename)[0]
+        self.masters = dict()  # populated by open_vsdx_file()
         self.pages = dict()   # populated by open_vsdx_file()
         self.page_objects = list()  # list of Page objects
         self.page_max_ids = dict()  # maximum shape id, used to add new shapes with a unique Id
@@ -72,13 +73,25 @@ class VisioFile:
         for page in pages:  # type: Element
             rel_id = page[1].attrib['{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id']
             page_name = page.attrib['Name']
-            print(f"page_name:{page_name}")
             page_filename = relid_page_dict.get(rel_id, None)
-            page_path = page_dir + page_filename
+            page_path = os.path.join(page_dir, page_filename)
             page_dict[page_path] = file_to_xml(page_path)
             self.page_max_ids[page_path] = 0  # initialise page_max_ids dict for each page
 
-            self.page_objects.append(VisioFile.Page(file_to_xml(page_path), page_path, page_name, self))
+            # Find the master for this page
+            page_master_ref_file = os.path.join(rel_dir, page_filename + '.rels')
+            page_master_dict = {}
+            if os.path.exists(page_master_ref_file):
+                page_rels = file_to_xml(page_master_ref_file).getroot()
+                for page_rel in page_rels:
+                    master_rel_id = page_rel.attrib['Id']
+                    master_target = page_rel.attrib['Target']
+                    master_file = os.path.abspath(os.path.join(page_dir, master_target))
+                    master_id = page_rel
+                    page_master_dict[master_rel_id] = file_to_xml(master_file).getroot()
+            print(page_master_dict)
+
+            self.page_objects.append(VisioFile.Page(file_to_xml(page_path), page_path, page_name, self, page_master_dict))
 
         return page_dict
 
@@ -297,13 +310,14 @@ class VisioFile:
             return f"Cell: name={self.name} val={self.value} func={self.func}"
 
     class Shape:  # or page
-        def __init__(self, xml: Element, parent_xml: Element, page: VisioFile.Page):
+        def __init__(self, xml: Element, parent_xml: Element, page: VisioFile.Page, vis: VisioFile):
             self.xml = xml
             self.parent_xml = parent_xml
             self.tag = xml.tag
             self.ID = xml.attrib['ID'] if xml.attrib.get('ID') else None
             self.type = xml.attrib['Type'] if xml.attrib.get('Type') else None
             self.page = page
+            self.vis = vis
 
             # get Cells in Shape
             self.cells = dict()
@@ -396,9 +410,9 @@ class VisioFile:
                 if e.tag == namespace+'Shapes':
                     for shape in e:  # type: Element
                         if shape.tag == namespace+'Shape':
-                            shapes.append(VisioFile.Shape(shape, e, self.page))
+                            shapes.append(VisioFile.Shape(shape, e, self.page, self.vis))
                 if e.tag == namespace+'Shape':
-                    shapes.append(VisioFile.Shape(e, self.xml, self.page))
+                    shapes.append(VisioFile.Shape(e, self.xml, self.page, self.vis))
             return shapes
 
         def find_shape_by_id(self, shape_id: str) -> VisioFile.Shape:  # returns Shape
@@ -462,12 +476,14 @@ class VisioFile:
             self.page.vis.update_ids(append_shape.xml, id_map)
             self.xml.append(append_shape.xml)
 
+
     class Page:
-        def __init__(self, xml: ET.ElementTree, filename: str, page_name: str, vis: VisioFile):
+        def __init__(self, xml: ET.ElementTree, filename: str, page_name: str, vis: VisioFile, master_dict):
             self._xml = xml
             self.filename = filename
             self.name = page_name
             self.vis = vis
+            self.master_dict = master_dict
 
         def __repr__(self):
             return f"<Page name={self.name} file={self.filename} >"
@@ -481,7 +497,20 @@ class VisioFile:
             # list of Shape objects in Page
             page_shapes = list()
             for shape in self.xml.getroot():
-                page_shapes.append(VisioFile.Shape(shape, self.xml, self))
+                if 'Master' in shape[1].attrib:
+                    # here we would look in the master dict to glue together a result
+                    print('####### SHAPE #######')
+                    ET.dump(shape)
+                    print('####### Master SHAPE ######')
+                    # Identify The Master ID
+                    master_id = shape[1].attrib['Master']
+                    # It appears that we need the sub_shape to find the MasterShape... that really sucks
+                    print(self.master_dict[f'rId{master_id}'])
+                    # MasterShape appears important
+                    # Identify The Shape Object
+
+                    # Find out how to merge the damn things? Likely the hardway
+                page_shapes.append(VisioFile.Shape(shape, self.xml, self, self.vis))
             return page_shapes
 
         def apply_text_context(self, context: dict):
@@ -511,6 +540,9 @@ class VisioFile:
                 if found:
                     shapes.extend(found)
             return shapes
+
+    class Master(Page):
+        pass
 
 
 def file_to_xml(filename: str) -> ET.ElementTree:
